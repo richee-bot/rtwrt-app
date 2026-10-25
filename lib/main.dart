@@ -10,6 +10,7 @@ import 'package:luci_mobile/utils/logger.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
 import 'package:luci_mobile/l10n/app_localizations.dart';
 import 'package:luci_mobile/l10n/luci_localizations.dart';
+import 'package:luci_mobile/rtwrt/first_use_screen.dart';
 import 'package:luci_mobile/screens/login_screen.dart';
 import 'package:luci_mobile/screens/main_screen.dart';
 import 'package:luci_mobile/screens/settings_screen.dart';
@@ -81,6 +82,7 @@ class LuCIApp extends ConsumerWidget {
       initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashScreen(),
+        '/welcome': (context) => const FirstUseScreen(),
         '/login': (context) => const LoginScreen(),
         '/': (context) => const MainScreen(),
         '/settings': (context) => const SettingsScreen(),

@@ -13,6 +13,14 @@ class AppConfig {
   static const String connectorUrl =
       'https://raw.githubusercontent.com/richee-bot/rtwrt-app/main/connector/luci-app-rtwrt.json';
 
+  /// Owner notice shown on the home screen.
+  static const String broadcastUrl =
+      'https://raw.githubusercontent.com/richee-bot/rtwrt-aw1000-firmware/main/broadcast.json';
+
+  /// Software list. Each package URL uses a release tag such as ipk-luci-app-passwall2.
+  static const String packagesUrl =
+      'https://raw.githubusercontent.com/richee-bot/rtwrt-aw1000-firmware/main/opkg-packages.json';
+
   // GitHub issues URL
   static const String githubIssuesUrl = '$githubRepositoryUrl/issues';
 

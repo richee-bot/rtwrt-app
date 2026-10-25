@@ -12,6 +12,7 @@ import 'package:luci_mobile/screens/wireless_screen.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
 import 'package:luci_mobile/widgets/luci_hub_tile.dart';
 
+import 'package:luci_mobile/rtwrt/broadcast_banner.dart';
 import 'package:luci_mobile/rtwrt/connector_installer.dart';
 import 'package:luci_mobile/rtwrt/connector_screen.dart';
 import 'package:luci_mobile/rtwrt/error_log_screen.dart';
@@ -23,7 +24,10 @@ import 'package:luci_mobile/rtwrt/result_dialog.dart';
 import 'package:luci_mobile/rtwrt/rtwrt_api.dart';
 import 'package:luci_mobile/rtwrt/service_board_screen.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
+import 'package:luci_mobile/rtwrt/profile.dart';
 import 'package:luci_mobile/rtwrt/tools_screen.dart';
+import 'package:luci_mobile/rtwrt/vpn_screen.dart';
+import 'package:luci_mobile/services/secure_storage_service.dart';
 import 'package:luci_mobile/rtwrt/uci_browser_screen.dart';
 
 class _Dest {
@@ -128,6 +132,14 @@ const _destinations = <_Dest>[
     group: 'Network',
   ),
   _Dest(
+    'tailscale',
+    'VPN / Tailscale',
+    'Wi-Fi or Tailscale, and install Tailscale on the router',
+    Icons.route,
+    VpnScreen(),
+    group: 'Internet',
+  ),
+  _Dest(
     'passwall2',
     'PassWall 2',
     'Nodes and rules for the VPN that is in use',
@@ -170,7 +182,7 @@ const _destinations = <_Dest>[
   _Dest(
     'ads',
     'RTWRT ADS',
-    'Games, AdMob, TikTok, auto-update',
+    'Switches, whitelist, and blocklist',
     Icons.do_not_disturb_on,
     UciBrowserScreen(initialConfig: 'rtwrt_ads'),
     group: 'Internet',
@@ -276,6 +288,7 @@ class RtwrtHubScreen extends ConsumerStatefulWidget {
 class _RtwrtHubScreenState extends ConsumerState<RtwrtHubScreen> {
   final _store = LayoutStore();
   RtwrtLayout? _layout;
+  String _telegram = '';
   bool _arrange = false;
 
   List<String> get _ids => [for (final dest in _destinations) dest.id];
@@ -313,7 +326,14 @@ class _RtwrtHubScreenState extends ConsumerState<RtwrtHubScreen> {
 
   Future<void> _load() async {
     final layout = await _store.load(_ids);
-    if (mounted) setState(() => _layout = layout);
+    final telegram =
+        await SecureStorageService().readValue(RtwrtProfile.telegramKey) ?? '';
+    if (mounted) {
+      setState(() {
+        _layout = layout;
+        _telegram = telegram;
+      });
+    }
   }
 
   Future<void> _update(RtwrtLayout layout) async {
@@ -359,6 +379,15 @@ class _RtwrtHubScreenState extends ConsumerState<RtwrtHubScreen> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: BroadcastBanner(),
+        ),
+        if (_telegram.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text('Telegram @$_telegram'),
+          ),
         if (pinned.isNotEmpty) ...[
           const LuciSectionHeader('Pinned'),
           LuciHubSection(

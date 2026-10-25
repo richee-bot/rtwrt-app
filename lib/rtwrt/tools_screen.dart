@@ -81,7 +81,11 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
       final file = File('${dir.path}/rtwrt-backup.tar.gz');
       await file.writeAsBytes(bytes, flush: true);
       if (!mounted) return;
-      await _report('Save backup', true, 'Backup saved on this phone.\n${file.path}');
+      await _report(
+        'Save backup',
+        true,
+        'Backup saved on this phone.\n${file.path}',
+      );
     } catch (e) {
       if (!mounted) return;
       await _report('Save backup', false, RtwrtApi.explain(e));
@@ -310,7 +314,11 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
               _chip('Load', () async {
                 final api = _client();
                 if (api == null) {
-                  await _report('Load tasks', false, 'Not connected to the router.');
+                  await _report(
+                    'Load tasks',
+                    false,
+                    'Not connected to the router.',
+                  );
                   return;
                 }
                 setState(() => _busy = true);
@@ -363,11 +371,7 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
                     : () async {
                         final cmd = _cmd.text.trim();
                         if (cmd.isEmpty) {
-                          await _report(
-                            'Command',
-                            false,
-                            'Enter a command.',
-                          );
+                          await _report('Command', false, 'Enter a command.');
                           return;
                         }
                         await _run('Command', cmd);

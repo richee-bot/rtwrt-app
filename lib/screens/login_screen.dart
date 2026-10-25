@@ -8,6 +8,7 @@ import 'package:luci_mobile/main.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:luci_mobile/config/app_config.dart';
+import 'package:luci_mobile/rtwrt/profile.dart';
 import 'package:luci_mobile/services/secure_storage_service.dart';
 import 'package:luci_mobile/utils/url_parser.dart';
 import 'package:luci_mobile/l10n/luci_localizations.dart';
@@ -57,11 +58,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       AppConfig.reviewerModeKey,
     );
 
-    if (reviewerModeEnabled == 'true' && mounted) {
-      // Navigate directly to main screen in reviewer mode
+    final ready = await secureStorage.readValue(RtwrtProfile.onboardingKey);
+    if (!mounted) return;
+    if (reviewerModeEnabled == 'true') {
       unawaited(Navigator.of(context).pushReplacementNamed('/'));
+    } else if (ready != '1') {
+      unawaited(Navigator.of(context).pushReplacementNamed('/welcome'));
     } else {
-      // Try auto login
       unawaited(_tryAutoLogin());
     }
   }
@@ -165,12 +168,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final success = await appState.tryAutoLogin(context: context);
     if (success && mounted) {
       unawaited(Navigator.of(context).pushReplacementNamed('/'));
-    } else {
-      if (mounted) {
-        setState(() {
-          _isCheckingAutoLogin = false;
-        });
-      }
+    } else if (mounted) {
+      final saved = await SecureStorageService().getCredentials();
+      if (!mounted) return;
+      final ip = saved['ipAddress'];
+      if (ip != null && ip.isNotEmpty) _ipController.text = ip;
+      final user = saved['username'];
+      if (user != null && user.isNotEmpty) _usernameController.text = user;
+      final pass = saved['password'];
+      if (pass != null && pass.isNotEmpty) _passwordController.text = pass;
+      setState(() => _isCheckingAutoLogin = false);
     }
   }
 

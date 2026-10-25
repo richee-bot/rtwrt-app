@@ -15,6 +15,8 @@
 				"/usr/bin/sms_tool *": [ "exec" ],
 				"/usr/bin/vnstat": [ "exec" ],
 				"/usr/bin/vnstat *": [ "exec" ],
+				"/usr/libexec/nlbwmon-action": [ "exec" ],
+				"/usr/libexec/nlbwmon-action *": [ "exec" ],
 				"/usr/bin/curl": [ "exec" ],
 				"/usr/bin/curl *": [ "exec" ],
 				"/usr/bin/wget": [ "exec" ],
@@ -60,6 +62,10 @@
 				"/etc/init.d/cron *": [ "exec" ],
 				"/etc/init.d/rpcd": [ "exec" ],
 				"/etc/init.d/rpcd *": [ "exec" ],
+				"/etc/init.d/nlbwmon": [ "exec" ],
+				"/etc/init.d/nlbwmon *": [ "exec" ],
+				"/usr/libexec/nlbwmon-action": [ "exec" ],
+				"/usr/libexec/nlbwmon-action *": [ "exec" ],
 				"/usr/share/rpcd/acl.d/luci-app-rtwrt.json": [ "write" ]
 			},
 			"uci": [ "*" ]

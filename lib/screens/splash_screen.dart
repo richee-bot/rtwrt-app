@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:luci_mobile/rtwrt/profile.dart';
 import 'package:luci_mobile/services/secure_storage_service.dart';
 import 'package:luci_mobile/config/app_config.dart';
 import 'package:luci_mobile/l10n/luci_localizations.dart';
@@ -40,11 +41,13 @@ class _SplashScreenState extends State<SplashScreen>
       AppConfig.reviewerModeKey,
     );
 
-    if (reviewerModeEnabled == 'true' && mounted) {
-      // Navigate directly to main screen in reviewer mode
+    final ready = await secureStorage.readValue(RtwrtProfile.onboardingKey);
+    if (!mounted) return;
+    if (reviewerModeEnabled == 'true') {
       unawaited(Navigator.of(context).pushReplacementNamed('/'));
-    } else if (mounted) {
-      // Normal flow - go to login screen
+    } else if (ready != '1') {
+      unawaited(Navigator.of(context).pushReplacementNamed('/welcome'));
+    } else {
       unawaited(Navigator.of(context).pushReplacementNamed('/login'));
     }
   }

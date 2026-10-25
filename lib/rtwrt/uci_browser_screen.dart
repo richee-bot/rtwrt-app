@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
@@ -175,6 +177,26 @@ class _UciConfigScreenState extends ConsumerState<UciConfigScreen> {
   }
 }
 
+/// LED modes from luci-app-rtwrt-led. The value is what UCI stores.
+const ledModeLabels = <String, String>{
+  'cycle_all': 'Combination / Cycle All',
+  'waves': 'In Waves',
+  'sequential': 'Sequential',
+  'slo_glo': 'Slo-Glo',
+  'chasing': 'Chasing / Flash',
+  'slow_fade': 'Slow Fade',
+  'twinkle': 'Twinkle / Flash',
+  'steady_on': 'Steady On',
+  'auto': 'Auto Dynamic Cycle',
+  'normal': 'Normal Mode',
+  'police': 'Cyber Emergency Strobe',
+  'stealth': 'Stealth / Dark Night Mode',
+};
+
+const ledTimingChoices = ['15', '30', '60'];
+
+const qmodemDialModes = ['qmi', 'mbim', 'ncm', 'ecm', 'rndis', 'gobinet'];
+
 const _fieldNames = {
   'enabled': 'Turn on',
   'ssid': 'Wi-Fi name',
@@ -191,6 +213,15 @@ const _fieldNames = {
   'password': 'Password',
   'port': 'Port',
   'mode': 'Mode',
+  'anim_sec': 'Animation duration',
+  'normal_sec': 'Normal duration',
+  'sms_notify': 'SMS alert',
+  'offline_notify': 'No connection alert',
+  'block_games': 'Block games',
+  'block_admob': 'Block AdMob',
+  'block_tiktok': 'Block TikTok',
+  'auto_update': 'Auto update',
+  'dial_mode': 'Dial mode',
   'ttl': 'TTL',
   'disabled': 'Disabled',
   'device': 'Device',
@@ -217,6 +248,8 @@ class UciSectionScreen extends ConsumerStatefulWidget {
 class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
   late final Map<String, TextEditingController> _fields;
   late final Set<String> _lists;
+  TextEditingController? _adsWhitelist;
+  TextEditingController? _adsBlocklist;
   bool _saving = false;
 
   @override
@@ -224,6 +257,11 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
     super.initState();
     _lists = {};
     _fields = {};
+    if (widget.config == 'rtwrt_ads') {
+      _adsWhitelist = TextEditingController();
+      _adsBlocklist = TextEditingController();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadAds());
+    }
     for (final entry in widget.values.entries) {
       if (entry.key.startsWith('.')) continue;
       if (entry.value is List) {
@@ -244,7 +282,50 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
     for (final controller in _fields.values) {
       controller.dispose();
     }
+    _adsWhitelist?.dispose();
+    _adsBlocklist?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAds() async {
+    final session = ref.read(sessionProvider);
+    final api = ref.read(apiServiceProvider);
+    if (session == null || api == null) return;
+    final client = RtwrtApi(api, session);
+    final white = await _readList(client, '/etc/rtwrt-ads/whitelist.txt');
+    final black = await _readList(client, '/etc/rtwrt-ads/blacklist.txt');
+    if (!mounted) return;
+    setState(() {
+      _adsWhitelist?.text = white;
+      _adsBlocklist?.text = black;
+    });
+  }
+
+  Future<String> _readList(RtwrtApi api, String path) async {
+    try {
+      final text = await api.shell(
+        'if [ -f ${_sh(path)} ]; then base64 ${_sh(path)}; else echo; fi',
+      );
+      final clean = text.replaceAll(RegExp(r'\s+'), '');
+      if (clean.isEmpty) return '';
+      return utf8.decode(base64Decode(clean));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _writeList(RtwrtApi api, String path, String text) async {
+    final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final encoded = base64Encode(utf8.encode(normalized));
+    final dir = path.substring(0, path.lastIndexOf('/'));
+    final result = await api.shell(
+      "mkdir -p ${_sh(dir)}; printf '%s' '$encoded' | base64 -d > ${_sh(path)}; echo WROTE",
+    );
+    if (!result.contains('WROTE')) {
+      throw Exception(
+        result.trim().isEmpty ? 'Could not save $path.' : result.trim(),
+      );
+    }
   }
 
   String _nice(String key) => _fieldNames[key] ?? key;
@@ -319,16 +400,29 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
       return ['2g', '5g', '6g'];
     }
     if (key == 'proto' && config == 'network') {
-      return ['static', 'dhcp', 'dhcpv6', 'pppoe', 'none', 'qmi', 'ncm', 'mbim'];
+      return [
+        'static',
+        'dhcp',
+        'dhcpv6',
+        'pppoe',
+        'none',
+        'qmi',
+        'ncm',
+        'mbim',
+      ];
     }
     if (key == 'pdp_type') {
       return ['ipv4', 'ipv6', 'ipv4v6'];
     }
     if (key == 'mode' && (config == 'rtwrt_led' || config == 'rtwrt_rgb_led')) {
-      return ['cycle_all', 'normal', 'stealth'];
+      return ledModeLabels.keys.toList();
+    }
+    if ((key == 'anim_sec' || key == 'normal_sec') &&
+        (config == 'rtwrt_led' || config == 'rtwrt_rgb_led')) {
+      return ledTimingChoices;
     }
     if (key == 'dial_mode' && config.startsWith('qmodem')) {
-      return ['qmi', 'mbim', 'ncm', 'ecm', 'rndis'];
+      return qmodemDialModes;
     }
     if ((key == 'auth' || key == 'auth_type') && config.startsWith('qmodem')) {
       return ['none', 'pap', 'chap', 'both'];
@@ -402,10 +496,40 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
       }
     }
     try {
-      await RtwrtApi(
-        api,
-        session,
-      ).uciSet(widget.config, widget.section, values);
+      final client = RtwrtApi(api, session);
+      await client.uciSet(widget.config, widget.section, values);
+      if (widget.config == 'rtwrt_ads') {
+        await _writeList(
+          client,
+          '/etc/rtwrt-ads/whitelist.txt',
+          _adsWhitelist?.text ?? '',
+        );
+        await _writeList(
+          client,
+          '/etc/rtwrt-ads/blacklist.txt',
+          _adsBlocklist?.text ?? '',
+        );
+        final restarted = await client.shell(
+          '/etc/init.d/rtwrt-ads restart >/dev/null 2>&1 && echo ADS_OK',
+        );
+        if (!restarted.contains('ADS_OK')) {
+          throw Exception(
+            restarted.trim().isEmpty
+                ? 'ADS service did not restart.'
+                : restarted.trim(),
+          );
+        }
+      }
+      if (widget.config == 'rtwrt_led' || widget.config == 'rtwrt_rgb_led') {
+        final text = await client.shell(
+          '/etc/init.d/rtwrt_rgb_led restart >/dev/null 2>&1; echo LED_OK',
+        );
+        if (!text.contains('LED_OK')) {
+          throw Exception(
+            text.trim().isEmpty ? 'LED service did not restart.' : text.trim(),
+          );
+        }
+      }
       if (!mounted) return;
       await showRtwrtResult(
         context,
@@ -428,6 +552,12 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
     }
   }
 
+  String _optionLabel(String key, String option) {
+    if (key == 'mode') return ledModeLabels[option] ?? option;
+    if (key == 'anim_sec' || key == 'normal_sec') return '$option seconds';
+    return option;
+  }
+
   Widget _choice(String key, List<String> options) {
     final current = _fields[key]!.text;
     final selected = options.contains(current) ? current : null;
@@ -444,7 +574,13 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
         ),
         items: [
           for (final option in options)
-            DropdownMenuItem(value: option, child: Text(option)),
+            DropdownMenuItem(
+              value: option,
+              child: Text(
+                _optionLabel(key, option),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
         ],
         onChanged: (value) {
           if (value == null) return;
@@ -500,8 +636,35 @@ class _UciSectionScreenState extends ConsumerState<UciSectionScreen> {
                       ),
                     ),
                   ),
+          if (widget.config == 'rtwrt_ads' &&
+              _adsWhitelist != null &&
+              _adsBlocklist != null) ...[
+            TextField(
+              controller: _adsWhitelist,
+              minLines: 4,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                labelText: 'Whitelist',
+                helperText: 'Domains to allow. One per line.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _adsBlocklist,
+              minLines: 4,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                labelText: 'Blocklist',
+                helperText: 'Domains to block. One per line.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
+
+String _sh(String value) => "'${value.replaceAll("'", "'\\''")}'";

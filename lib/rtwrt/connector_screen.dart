@@ -53,7 +53,7 @@ class _ConnectorScreenState extends ConsumerState<ConnectorScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'This downloads the RTWRT connector from GitHub and puts it on the router. After that, the app can run tools on OpenWrt-style firmware. The app signs in again when the connector is ready.',
+            'This downloads the RTWRT connector from GitHub and puts it on the router. It also installs the bandwidth monitor when that package is missing. The app signs in again when the connector is ready.',
           ),
           const SizedBox(height: 16),
           FilledButton(

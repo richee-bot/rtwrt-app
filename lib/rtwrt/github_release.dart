@@ -5,11 +5,7 @@ import 'package:luci_mobile/config/app_config.dart';
 
 /// A file attached to a GitHub release, or listed in firmware.json.
 class GithubAsset {
-  const GithubAsset({
-    required this.name,
-    required this.url,
-    this.note = '',
-  });
+  const GithubAsset({required this.name, required this.url, this.note = ''});
 
   final String name;
   final String url;
@@ -28,9 +24,7 @@ bool isNewerVersion(String remote, String local) {
   List<int> parts(String raw) {
     final cleaned = raw.trim().replaceFirst(RegExp(r'^v'), '');
     final core = cleaned.split('+').first;
-    return [
-      for (final piece in core.split('.')) int.tryParse(piece) ?? 0,
-    ];
+    return [for (final piece in core.split('.')) int.tryParse(piece) ?? 0];
   }
 
   final left = parts(remote);
@@ -53,6 +47,55 @@ bool isRicheeGithubUrl(String raw) {
     return false;
   }
   return uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'richee-bot';
+}
+
+/// One router package from opkg-packages.json.
+class RouterPackage {
+  const RouterPackage({
+    required this.name,
+    required this.note,
+    required this.url,
+  });
+
+  final String name;
+  final String note;
+  final String url;
+
+  String get label => note.isEmpty ? name : '$name — $note';
+}
+
+/// Release download for an .ipk or .apk on the firmware repo.
+final RegExp routerPackageUrl = RegExp(
+  r'^https://github\.com/richee-bot/rtwrt-aw1000-firmware/releases/download/[A-Za-z0-9._+-]+/[A-Za-z0-9._+-]+\.(?:ipk|apk)$',
+);
+
+/// Packages the Software screen can install. Invalid URLs are left out.
+List<RouterPackage> routerPackagesFrom(Map<String, dynamic> json) {
+  final raw = json['packages'];
+  if (raw is! List) return const [];
+  final out = <RouterPackage>[];
+  final seen = <String>{};
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final name = item['name']?.toString().trim() ?? '';
+    if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9._+-]{0,80}$').hasMatch(name)) {
+      continue;
+    }
+    final apk = item['apk_url']?.toString().trim() ?? '';
+    final ipk = item['ipk_url']?.toString().trim() ?? '';
+    final url = routerPackageUrl.hasMatch(apk)
+        ? apk
+        : (routerPackageUrl.hasMatch(ipk) ? ipk : '');
+    if (url.isEmpty || !seen.add(name.toLowerCase())) continue;
+    out.add(
+      RouterPackage(
+        name: name,
+        note: item['note']?.toString().trim() ?? '',
+        url: url,
+      ),
+    );
+  }
+  return out;
 }
 
 class GithubReleases {

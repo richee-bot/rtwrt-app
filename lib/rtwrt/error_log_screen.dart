@@ -39,9 +39,9 @@ class _ErrorLogScreenState extends State<ErrorLogScreen> {
                 ? null
                 : () {
                     Clipboard.setData(ClipboardData(text: _lines.join('\n\n')));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('Copied')));
                   },
             icon: const Icon(Icons.copy),
           ),
