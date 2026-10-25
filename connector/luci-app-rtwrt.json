@@ -1,0 +1,68 @@
+{
+	"luci-app-rtwrt": {
+		"description": "RTWRT phone app: shell, modem, backup, and firmware",
+		"read": {
+			"ubus": {
+				"file": [ "exec", "read", "stat", "list" ],
+				"rc": [ "list", "init" ]
+			},
+			"file": {
+				"/bin/sh": [ "exec" ],
+				"/bin/sh *": [ "exec" ],
+				"/usr/bin/tom_modem": [ "exec" ],
+				"/usr/bin/tom_modem *": [ "exec" ],
+				"/usr/bin/sms_tool": [ "exec" ],
+				"/usr/bin/sms_tool *": [ "exec" ],
+				"/usr/bin/vnstat": [ "exec" ],
+				"/usr/bin/vnstat *": [ "exec" ],
+				"/usr/bin/curl": [ "exec" ],
+				"/usr/bin/curl *": [ "exec" ],
+				"/usr/bin/wget": [ "exec" ],
+				"/usr/bin/wget *": [ "exec" ],
+				"/bin/ping": [ "exec" ],
+				"/bin/ping *": [ "exec" ],
+				"/usr/bin/traceroute": [ "exec" ],
+				"/usr/bin/traceroute *": [ "exec" ],
+				"/usr/bin/nslookup": [ "exec" ],
+				"/usr/bin/nslookup *": [ "exec" ],
+				"/sbin/logread": [ "exec" ],
+				"/sbin/logread *": [ "exec" ],
+				"/bin/dmesg": [ "exec" ],
+				"/bin/dmesg *": [ "exec" ],
+				"/bin/ps": [ "exec" ],
+				"/bin/ps *": [ "exec" ],
+				"/sbin/ip": [ "exec" ],
+				"/sbin/ip *": [ "exec" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"file": [ "exec", "write", "read" ],
+				"rc": [ "init" ],
+				"uci": [ "get", "set", "commit", "configs" ]
+			},
+			"file": {
+				"/bin/sh": [ "exec" ],
+				"/bin/sh *": [ "exec" ],
+				"/usr/bin/tom_modem": [ "exec" ],
+				"/usr/bin/tom_modem *": [ "exec" ],
+				"/usr/bin/sms_tool": [ "exec" ],
+				"/usr/bin/sms_tool *": [ "exec" ],
+				"/usr/bin/curl": [ "exec" ],
+				"/usr/bin/curl *": [ "exec" ],
+				"/usr/bin/wget": [ "exec" ],
+				"/usr/bin/wget *": [ "exec" ],
+				"/sbin/sysupgrade": [ "exec" ],
+				"/sbin/sysupgrade *": [ "exec" ],
+				"/etc/init.d/qmodem_network": [ "exec" ],
+				"/etc/init.d/qmodem_network *": [ "exec" ],
+				"/etc/init.d/cron": [ "exec" ],
+				"/etc/init.d/cron *": [ "exec" ],
+				"/etc/init.d/rpcd": [ "exec" ],
+				"/etc/init.d/rpcd *": [ "exec" ],
+				"/usr/share/rpcd/acl.d/luci-app-rtwrt.json": [ "write" ]
+			},
+			"uci": [ "*" ]
+		}
+	}
+}
