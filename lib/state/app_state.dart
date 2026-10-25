@@ -614,6 +614,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Signs in again with the saved router password.
+  ///
+  /// A ubus session keeps the grants it had at login. After the connector
+  /// file is added, only a new login can run the router commands.
+  Future<bool> refreshRouterSession() {
+    final router = selectedRouter;
+    if (router == null) return Future<bool>.value(false);
+    return login(
+      router.activeAddress,
+      router.username,
+      router.password,
+      router.activeUseHttps,
+      fromRouter: true,
+      alternateAddress: router.inactiveAddress,
+      alternateUseHttps: router.inactiveUseHttps,
+      activeAddressIndex: router.activeAddressIndex,
+    );
+  }
+
   Future<bool> login(
     String ip,
     String user,

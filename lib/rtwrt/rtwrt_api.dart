@@ -32,7 +32,8 @@ class RtwrtApi {
     if (text.contains('does not have permission') ||
         text.contains('access denied') ||
         text.contains('Access denied')) {
-      return 'The router blocked this command. Log out of the app, then sign in again as root.';
+      return 'This login started before the router allowed the command. '
+          'Settings, Logout, then sign in again.';
     }
     return text;
   }

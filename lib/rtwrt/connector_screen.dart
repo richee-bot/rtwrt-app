@@ -31,7 +31,10 @@ class _ConnectorScreenState extends ConsumerState<ConnectorScreen> {
       return;
     }
     setState(() => _busy = true);
-    final result = await ConnectorInstaller.install(RtwrtApi(api, session));
+    final result = await ConnectorInstaller.install(
+      RtwrtApi(api, session),
+      refresh: () => ConnectorInstaller.refreshSession(ref),
+    );
     if (!mounted) return;
     setState(() => _busy = false);
     await showRtwrtResult(
@@ -50,7 +53,7 @@ class _ConnectorScreenState extends ConsumerState<ConnectorScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'This downloads the RTWRT connector from GitHub and puts it on the router. After that, the app can run tools on OpenWrt-style firmware. Sign in again once it finishes.',
+            'This downloads the RTWRT connector from GitHub and puts it on the router. After that, the app can run tools on OpenWrt-style firmware. The app signs in again when the connector is ready.',
           ),
           const SizedBox(height: 16),
           FilledButton(

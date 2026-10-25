@@ -293,7 +293,15 @@ class _RtwrtHubScreenState extends ConsumerState<RtwrtHubScreen> {
     final session = ref.read(sessionProvider);
     final api = ref.read(apiServiceProvider);
     if (session == null || api == null || !mounted) return;
-    final result = await ConnectorInstaller.ensure(RtwrtApi(api, session));
+    final ConnectorResult result;
+    try {
+      result = await ConnectorInstaller.ensure(
+        RtwrtApi(api, session),
+        refresh: () => ConnectorInstaller.refreshSession(ref),
+      );
+    } catch (_) {
+      return;
+    }
     if (!mounted || result.outcome == ConnectorOutcome.ready) return;
     await showRtwrtResult(
       context,
