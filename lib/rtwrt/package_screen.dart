@@ -395,9 +395,14 @@ fi
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Force'),
-                  subtitle: const Text(
-                    'Reinstall, overwrite, and ignore dependency conflicts',
+                  title: const Text('Force install'),
+                  subtitle: Text(
+                    _force
+                        ? 'Force mode active:
+• .apk (Alpine): apk add --force-broken-world --allow-untrusted
+• .ipk (OpenWrt): opkg install --force-depends --force-overwrite'
+                        : 'Standard mode (checks strict dependencies and version bounds)',
+                    style: const TextStyle(fontSize: 12),
                   ),
                   value: _force,
                   onChanged: _busy

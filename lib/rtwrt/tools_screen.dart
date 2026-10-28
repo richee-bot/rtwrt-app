@@ -9,6 +9,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:luci_mobile/rtwrt/result_dialog.dart';
 import 'package:luci_mobile/rtwrt/rtwrt_api.dart';
+import 'package:luci_mobile/rtwrt/bandix_screen.dart';
+import 'package:luci_mobile/rtwrt/cpu_mode_screen.dart';
+import 'package:luci_mobile/rtwrt/file_manager_screen.dart';
+import 'package:luci_mobile/rtwrt/ftp_screen.dart';
+import 'package:luci_mobile/rtwrt/netstat_screen.dart';
+import 'package:luci_mobile/rtwrt/ping_test_screen.dart';
+import 'package:luci_mobile/rtwrt/repo_keys_screen.dart';
+import 'package:luci_mobile/rtwrt/storage_manager_screen.dart';
+import 'package:luci_mobile/rtwrt/system_info_screen.dart';
+import 'package:luci_mobile/rtwrt/ttl_switch_screen.dart';
 
 class ToolsScreen extends ConsumerStatefulWidget {
   const ToolsScreen({super.key});
@@ -138,6 +148,12 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
     }
   }
 
+  
+  Future<void> _nav(Widget page) async {
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
   Future<void> _wifiCode() async {
     final api = _client();
     if (api == null) return;
@@ -225,6 +241,21 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
               "curl -L -o /dev/null -w 'Downloaded %{size_download} bytes in %{time_total}s\\n' --max-time 20 http://speed.cloudflare.com/__down?bytes=5000000",
             ),
           ),
+          _action(
+            'TTL Switch (Hotspot Bypass)',
+            'Presets: TTL 64, 65, 128, 129, 255',
+            () => _nav(const TtlSwitchScreen()),
+          ),
+          _action(
+            'Bandwidth & Bandix Monitor',
+            'Real-time eBPF traffic stats and device rates',
+            () => _nav(const BandixScreen()),
+          ),
+          _action(
+            'Ping Test & Internet Status',
+            'Live IPv4/IPv6 ping probes and packet loss',
+            () => _nav(const PingTestScreen()),
+          ),
           _heading('Check a site'),
           TextField(
             controller: _host,
@@ -273,7 +304,43 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
             'Put the last copy back and reboot',
             _restore,
           ),
-          _heading('Router'),
+          _heading('System & Storage Tools'),
+          _action(
+            'System Info',
+            'Hardware model, CPU, kernel, load, and memory',
+            () => _nav(const SystemInfoScreen()),
+          ),
+          _action(
+            'Storage & Disk Manager',
+            'Overlay space, RAM disk (/tmp), block devices, and mounts',
+            () => _nav(const StorageManagerScreen()),
+          ),
+          _action(
+            'File Manager',
+            'Browse router filesystem, upload and download files',
+            () => _nav(const FileManagerScreen()),
+          ),
+          _action(
+            'Netstat (Open Ports)',
+            'Inspection of listening ports and active sockets',
+            () => _nav(const NetstatScreen()),
+          ),
+          _action(
+            'Repository Public Keys',
+            'Manage APK and OPKG signing verification keys',
+            () => _nav(const RepoKeysScreen()),
+          ),
+          _action(
+            'CPU Mode Scaling',
+            'LowPower, Schedutil, and Performance scaling governors',
+            () => _nav(const CpuModeScreen()),
+          ),
+          _action(
+            'FTP File Server',
+            'vsftpd status, start/stop, and controls',
+            () => _nav(const FtpScreen()),
+          ),
+          _heading('Router Operations'),
           _action(
             'Free some memory',
             'Clear caches. The router stays online.',

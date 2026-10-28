@@ -29,6 +29,16 @@ import 'package:luci_mobile/rtwrt/tools_screen.dart';
 import 'package:luci_mobile/rtwrt/vpn_screen.dart';
 import 'package:luci_mobile/services/secure_storage_service.dart';
 import 'package:luci_mobile/rtwrt/uci_browser_screen.dart';
+import 'package:luci_mobile/rtwrt/bandix_screen.dart';
+import 'package:luci_mobile/rtwrt/cpu_mode_screen.dart';
+import 'package:luci_mobile/rtwrt/file_manager_screen.dart';
+import 'package:luci_mobile/rtwrt/ftp_screen.dart';
+import 'package:luci_mobile/rtwrt/netstat_screen.dart';
+import 'package:luci_mobile/rtwrt/ping_test_screen.dart';
+import 'package:luci_mobile/rtwrt/repo_keys_screen.dart';
+import 'package:luci_mobile/rtwrt/storage_manager_screen.dart';
+import 'package:luci_mobile/rtwrt/system_info_screen.dart';
+import 'package:luci_mobile/rtwrt/ttl_switch_screen.dart';
 
 class _Dest {
   const _Dest(
@@ -73,6 +83,86 @@ const _destinations = <_Dest>[
     'Redial, data use, ping, backup, tasks',
     Icons.build,
     ToolsScreen(),
+    group: 'Care',
+  ),
+  _Dest(
+    'ttl',
+    'TTL Switch',
+    'Hotspot bypass presets (TTL 64, 65, 128, 129, 255)',
+    Icons.alt_route,
+    TtlSwitchScreen(),
+    group: 'Internet',
+  ),
+  _Dest(
+    'bandix',
+    'Bandix eBPF',
+    'Real-time bandwidth monitor & device stats',
+    Icons.data_thresholding,
+    BandixScreen(),
+    group: 'Internet',
+  ),
+  _Dest(
+    'ping',
+    'Ping & Internet',
+    'IPv4 and IPv6 connectivity probes and latency',
+    Icons.network_ping,
+    PingTestScreen(),
+    group: 'Internet',
+  ),
+  _Dest(
+    'cpumode',
+    'CPU Mode',
+    'LowPower, Schedutil, Performance scaling',
+    Icons.speed,
+    CpuModeScreen(),
+    group: 'Everyday',
+  ),
+  _Dest(
+    'netstat',
+    'Netstat',
+    'Open ports and active socket connections',
+    Icons.lan,
+    NetstatScreen(),
+    group: 'Network',
+  ),
+  _Dest(
+    'ftp',
+    'FTP Server',
+    'vsftpd file transfer controls',
+    Icons.folder_shared,
+    FtpScreen(),
+    group: 'Network',
+  ),
+  _Dest(
+    'sysinfo',
+    'System Info',
+    'Hardware model, CPU, kernel, load, and memory',
+    Icons.info_outline,
+    SystemInfoScreen(),
+    group: 'Care',
+  ),
+  _Dest(
+    'storage',
+    'Storage & Disks',
+    'Overlay, RAM disk, partitions, and drives',
+    Icons.storage,
+    StorageManagerScreen(),
+    group: 'Care',
+  ),
+  _Dest(
+    'files',
+    'File Manager',
+    'Browse, download, and upload router files',
+    Icons.folder_open,
+    FileManagerScreen(),
+    group: 'Care',
+  ),
+  _Dest(
+    'repokeys',
+    'Repo Public Keys',
+    'Manage APK and OPKG signing keys',
+    Icons.vpn_key,
+    RepoKeysScreen(),
     group: 'Care',
   ),
   _Dest(

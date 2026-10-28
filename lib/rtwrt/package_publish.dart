@@ -44,7 +44,15 @@ String safePackageFileName(String fileName) {
   return cleaned;
 }
 
+/// Detects package extension and returns whether it is an Alpine/OpenWrt APK package.
+bool isApkPackage(String pathOrName) {
+  return pathOrName.toLowerCase().endsWith(".apk");
+}
+
 /// Install command for a file already stored on the router.
+/// Strictly selects commands:
+/// - .apk force: apk add --force-broken-world --allow-untrusted <path>
+/// - .ipk force: opkg install --force-depends --force-overwrite <path>
 String packageInstallLine(
   String path, {
   required bool apk,
@@ -52,24 +60,24 @@ String packageInstallLine(
 }) {
   if (apk) {
     final flags = force
-        ? '--allow-untrusted --force-overwrite'
-        : '--allow-untrusted';
-    return 'apk add $flags $path';
+        ? "--force-broken-world --allow-untrusted"
+        : "--allow-untrusted";
+    return "apk add $flags $path";
   }
   final flags = force
-      ? '--force-depends --force-overwrite --force-downgrade --force-reinstall '
-      : '';
-  return 'if command -v opkg >/dev/null 2>&1; then opkg install $flags$path; else echo NO_OPKG; fi';
+      ? "--force-depends --force-overwrite "
+      : "";
+  return "if command -v opkg >/dev/null 2>&1; then opkg install $flags$path; else echo NO_OPKG; fi";
 }
 
 /// Install command for a package name from the router feed.
 String namedPackageInstall(String quotedName, {required bool force}) {
   if (force) {
-    return 'if command -v apk >/dev/null 2>&1; then apk add --force-overwrite $quotedName; '
-        'else opkg update; opkg install --force-depends --force-overwrite --force-downgrade --force-reinstall $quotedName; fi';
+    return "if command -v apk >/dev/null 2>&1; then apk add --force-broken-world --allow-untrusted $quotedName; "
+        "else opkg update; opkg install --force-depends --force-overwrite $quotedName; fi";
   }
-  return 'if command -v apk >/dev/null 2>&1; then apk add $quotedName; '
-      'else opkg update; opkg install $quotedName; fi';
+  return "if command -v apk >/dev/null 2>&1; then apk add --allow-untrusted $quotedName; "
+      "else opkg update; opkg install $quotedName; fi";
 }
 
 /// Publishes an uploaded package on richee-bot/rtwrt-aw1000-firmware.

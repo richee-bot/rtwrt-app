@@ -62,7 +62,7 @@ void main() {
     );
     expect(
       packageInstallLine('/tmp/rtwrt-package.apk', apk: true, force: true),
-      contains('--force-overwrite'),
+      contains('--force-broken-world'),
     );
   });
 

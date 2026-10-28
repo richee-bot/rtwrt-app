@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:luci_mobile/l10n/failure_text.dart';
 import 'package:luci_mobile/utils/uci_values.dart';
 import 'package:luci_mobile/state/app_state.dart';
-import 'package:luci_mobile/main.dart';
 import 'package:luci_mobile/navigation/luci_tab.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
 import 'package:luci_mobile/widgets/luci_animation_system.dart';
@@ -13,6 +12,9 @@ import 'package:luci_mobile/models/router.dart' as model;
 import 'package:luci_mobile/utils/wifi_utils.dart';
 import 'package:luci_mobile/l10n/luci_localizations.dart';
 import 'package:luci_mobile/rtwrt/broadcast_banner.dart';
+import 'package:luci_mobile/rtwrt/modem_screen.dart';
+import 'package:luci_mobile/rtwrt/rtwrt_api.dart';
+import 'package:luci_mobile/state/app_state_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -22,6 +24,22 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  ServingCell? _modemCell;
+
+  Future<void> _fetchModemStatus() async {
+    final session = ref.read(sessionProvider);
+    final api = ref.read(apiServiceProvider);
+    if (session == null || api == null) return;
+    try {
+      final rtwrtApi = RtwrtApi(api, session);
+      final out = await rtwrtApi.shell(r'''
+PORT=$(uci -q get qmodem.4_1.at_port); [ -n "$PORT" ] || PORT=/dev/ttyUSB3
+tom_modem -d "$PORT" -o at -c 'AT+QENG="servingcell"' 2>/dev/null
+''');
+      final cell = ServingCell.parse(out);
+      if (mounted) setState(() => _modemCell = cell);
+    } catch (_) {}
+  }
   final ScrollController _wirelessScrollController = ScrollController();
   bool _showWirelessLeftArrow = false;
   bool _showWirelessRightArrow = false;
@@ -35,6 +53,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(appStateProvider).fetchDashboardData();
+      _fetchModemStatus();
       // Initialize arrows after layout
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateWirelessArrows();
@@ -206,6 +225,81 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     'testing' => context.l10n.releaseTesting,
     _ => context.l10n.releaseStable,
   };
+
+  
+  Widget _buildModemMiniTile(AppState appState) {
+    final cell = _modemCell;
+    final rat = cell?.rat ?? 'Cellular (5G/4G)';
+    final band = cell?.band != null && cell!.band!.isNotEmpty ? 'Band ${cell.band}' : 'Modem Active';
+    final rsrp = cell?.rsrp != null && cell!.rsrp!.isNotEmpty ? '${cell.rsrp} dBm' : 'Online';
+    final sinr = cell?.sinr != null && cell!.sinr!.isNotEmpty ? '${cell.sinr} dB' : null;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ModemScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00F0FF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.signal_cellular_alt_rounded, color: Color(0xFF00F0FF), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          rat,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00FF9D).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            band,
+                            style: const TextStyle(
+                              color: Color(0xFF00FF9D),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sinr != null ? 'RSRP: $rsrp • SINR: $sinr' : 'Signal: $rsrp',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDeviceInfoCard(AppState appState) {
     final boardInfo =
@@ -1685,7 +1779,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => appState.fetchDashboardData(),
+      onRefresh: () async {
+                await appState.fetchDashboardData();
+                await _fetchModemStatus();
+              },
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isLandscape =
@@ -1697,7 +1794,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 16),
               const BroadcastBanner(),
               _buildDeviceInfoCard(appState),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              _buildModemMiniTile(appState),
+              const SizedBox(height: 10),
               SizedBox(
                 height: 240,
                 child: _buildRealtimeThroughputCard(appState),
@@ -1739,6 +1838,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const SizedBox(height: 4),
                         const BroadcastBanner(),
                         _buildDeviceInfoCard(appState),
+                        const SizedBox(height: 4),
+                        _buildModemMiniTile(appState),
                         const SizedBox(height: 4),
                         Expanded(child: _buildRealtimeThroughputCard(appState)),
                         const SizedBox(height: 4),
