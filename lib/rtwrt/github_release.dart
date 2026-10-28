@@ -66,7 +66,7 @@ class RouterPackage {
 
 /// Release download for an .ipk or .apk on the firmware repo.
 final RegExp routerPackageUrl = RegExp(
-  r'^https://github\.com/richee-bot/rtwrt-aw1000-firmware/releases/download/[A-Za-z0-9._+-]+/[A-Za-z0-9._+-]+\.(?:ipk|apk)$',
+  r'^https://github\.com/richee-bot/rtwrt-aw1000-firmware/releases/download/[A-Za-z0-9._+%-]+/[A-Za-z0-9._+%-]+\.(?:ipk|apk)$',
 );
 
 /// Packages the Software screen can install. Invalid URLs are left out.
