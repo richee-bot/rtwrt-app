@@ -212,20 +212,36 @@ class PackagePublisher {
     final raw = catalog['packages'];
     final packages = raw is List ? [...raw] : <dynamic>[];
     var note = name;
+    String? oldApkUrl;
+    String? oldIpkUrl;
     for (final item in packages) {
       if (item is Map && item['name']?.toString() == name) {
         final old = item['note']?.toString().trim() ?? '';
         if (old.isNotEmpty) note = old;
+        oldApkUrl = item['apk_url']?.toString();
+        oldIpkUrl = item['ipk_url']?.toString();
       }
+    }
+    final remarkTag = apk ? '[APK]' : '[IPK]';
+    if (!note.startsWith('[APK]') && !note.startsWith('[IPK]') && !note.startsWith('[APK / IPK]')) {
+      note = '$remarkTag $note';
     }
     packages.removeWhere(
       (item) => item is Map && item['name']?.toString() == name,
     );
-    packages.add({
+    final finalApkUrl = apk ? url : oldApkUrl;
+    final finalIpkUrl = !apk ? url : oldIpkUrl;
+    final formatStr = (finalApkUrl != null && finalIpkUrl != null)
+        ? 'apk,ipk'
+        : (apk ? 'apk' : 'ipk');
+    final entry = <String, dynamic>{
       'name': name,
       'note': note,
-      if (apk) 'apk_url': url else 'ipk_url': url,
-    });
+      'format': formatStr,
+    };
+    if (finalApkUrl != null) entry['apk_url'] = finalApkUrl;
+    if (finalIpkUrl != null) entry['ipk_url'] = finalIpkUrl;
+    packages.add(entry);
     catalog['packages'] = packages;
     catalog['updated'] = _today();
     final body = jsonEncode(catalog);

@@ -103,9 +103,9 @@ class _PackageScreenState extends ConsumerState<PackageScreen> {
         _catalogStatus = list.isEmpty
             ? 'No software is published on GitHub.'
             : '';
-        _pick = list.any((pkg) => pkg.name == _pick)
+        _pick = list.any((pkg) => pkg.id == _pick)
             ? _pick
-            : (list.isEmpty ? null : list.first.name);
+            : (list.isEmpty ? null : list.first.id);
       });
     } catch (e) {
       if (!mounted) return;
@@ -115,7 +115,7 @@ class _PackageScreenState extends ConsumerState<PackageScreen> {
 
   RouterPackage? get _selected {
     for (final pkg in _catalog) {
-      if (pkg.name == _pick) return pkg;
+      if (pkg.id == _pick || pkg.name == _pick) return pkg;
     }
     return null;
   }
@@ -132,7 +132,7 @@ class _PackageScreenState extends ConsumerState<PackageScreen> {
       return;
     }
     final url = pkg.url.replaceAll("'", '');
-    final apk = url.endsWith('.apk');
+    final apk = pkg.isApk;
     final path = apk ? '/tmp/rtwrt-package.apk' : '/tmp/rtwrt-package.ipk';
     final install = packageInstallLine(path, apk: apk, force: _force);
     await _run('''
@@ -148,7 +148,7 @@ fi
 echo DOWNLOAD:\$?
 $install
 echo INSTALL:\$?
-''', action: 'Install ${pkg.name}');
+''', action: 'Install [${pkg.formatRemark}] ${pkg.name}');
   }
 
   Future<String?> _githubToken({required bool askWhenMissing}) async {
@@ -382,7 +382,7 @@ fi
                     items: [
                       for (final pkg in _catalog)
                         DropdownMenuItem(
-                          value: pkg.name,
+                          value: pkg.id,
                           child: Text(
                             pkg.label,
                             overflow: TextOverflow.ellipsis,
@@ -393,12 +393,56 @@ fi
                         ? null
                         : (value) => setState(() => _pick = value),
                   ),
+                if (_selected != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _selected!.isApk
+                          ? Colors.cyan.withValues(alpha: 0.12)
+                          : Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _selected!.isApk ? Colors.cyan : Colors.orange,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _selected!.isApk ? Icons.android : Icons.inventory_2,
+                          size: 16,
+                          color: _selected!.isApk ? Colors.cyan : Colors.orange,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _selected!.isApk
+                              ? 'GitHub Remark: [APK] (Alpine Linux / apk)'
+                              : 'GitHub Remark: [IPK] (OpenWrt / opkg)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _selected!.isApk ? Colors.cyan[200] : Colors.orange[200],
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _selected!.url.split('/').last,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Force install'),
                   subtitle: Text(
                     _force
-                        ? '''Force mode active:\n• .apk: apk add --force-broken-world --allow-untrusted\n• .ipk: opkg install --force-depends --force-overwrite'''
+                        ? '''Force mode active:
+• .apk: apk add --force-broken-world --allow-untrusted
+• .ipk: opkg install --force-depends --force-overwrite'''
                         : 'Standard mode (checks strict dependencies and version bounds)',
                     style: const TextStyle(fontSize: 12),
                   ),

@@ -61,7 +61,21 @@ class RouterPackage {
   final String note;
   final String url;
 
-  String get label => note.isEmpty ? name : '$name — $note';
+  bool get isApk => url.toLowerCase().endsWith('.apk');
+  String get formatRemark => isApk ? 'APK' : 'IPK';
+  String get id => '$name:${formatRemark.toLowerCase()}';
+
+  String get label {
+    final cleanNote = note.trim();
+    final prefix = '[$formatRemark]';
+    if (cleanNote.isEmpty) return '$prefix $name';
+    if (cleanNote.toUpperCase().startsWith('[APK]') ||
+        cleanNote.toUpperCase().startsWith('[IPK]') ||
+        cleanNote.toUpperCase().startsWith('[APK / IPK]')) {
+      return '$name — $cleanNote';
+    }
+    return '$prefix $name — $cleanNote';
+  }
 }
 
 /// Release download for an .ipk or .apk on the firmware repo.
@@ -81,19 +95,33 @@ List<RouterPackage> routerPackagesFrom(Map<String, dynamic> json) {
     if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9._+-]{0,80}$').hasMatch(name)) {
       continue;
     }
+    final rawNote = item['note']?.toString().trim() ?? '';
     final apk = item['apk_url']?.toString().trim() ?? '';
     final ipk = item['ipk_url']?.toString().trim() ?? '';
-    final url = routerPackageUrl.hasMatch(apk)
-        ? apk
-        : (routerPackageUrl.hasMatch(ipk) ? ipk : '');
-    if (url.isEmpty || !seen.add(name.toLowerCase())) continue;
-    out.add(
-      RouterPackage(
-        name: name,
-        note: item['note']?.toString().trim() ?? '',
-        url: url,
-      ),
-    );
+
+    final hasApk = routerPackageUrl.hasMatch(apk);
+    final hasIpk = routerPackageUrl.hasMatch(ipk);
+
+    if (hasApk && seen.add('${name.toLowerCase()}:apk')) {
+      final noteText = rawNote.replaceAll('[APK / IPK]', '[APK]');
+      out.add(
+        RouterPackage(
+          name: name,
+          note: noteText,
+          url: apk,
+        ),
+      );
+    }
+    if (hasIpk && seen.add('${name.toLowerCase()}:ipk')) {
+      final noteText = rawNote.replaceAll('[APK / IPK]', '[IPK]');
+      out.add(
+        RouterPackage(
+          name: name,
+          note: noteText,
+          url: ipk,
+        ),
+      );
+    }
   }
   return out;
 }

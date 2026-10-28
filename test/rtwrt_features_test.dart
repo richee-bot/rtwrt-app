@@ -1,3 +1,4 @@
+import 'package:luci_mobile/rtwrt/github_release.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luci_mobile/rtwrt/package_publish.dart';
 import 'package:luci_mobile/rtwrt/modem_screen.dart';
@@ -33,6 +34,52 @@ void main() {
       final line = namedPackageInstall('luci-app-vantage', force: true);
       expect(line, contains('apk add --force-broken-world --allow-untrusted luci-app-vantage'));
       expect(line, contains('opkg install --force-depends --force-overwrite luci-app-vantage'));
+    });
+
+    test('RouterPackage remarks format in label and id', () {
+      const apkPkg = RouterPackage(
+        name: 'luci-app-vantage',
+        note: 'Live Dashboard',
+        url: 'https://github.com/richee-bot/rtwrt-aw1000-firmware/releases/download/apk-luci-app-vantage/luci-app-vantage-1.0.9-r1.apk',
+      );
+      expect(apkPkg.isApk, isTrue);
+      expect(apkPkg.formatRemark, 'APK');
+      expect(apkPkg.id, 'luci-app-vantage:apk');
+      expect(apkPkg.label, '[APK] luci-app-vantage — Live Dashboard');
+
+      const ipkPkg = RouterPackage(
+        name: 'luci-theme-moci',
+        note: 'Console Theme',
+        url: 'https://github.com/richee-bot/rtwrt-aw1000-firmware/releases/download/ipk-luci-theme-moci/luci-theme-moci_1.0.0-1_all.ipk',
+      );
+      expect(ipkPkg.isApk, isFalse);
+      expect(ipkPkg.formatRemark, 'IPK');
+      expect(ipkPkg.id, 'luci-theme-moci:ipk');
+      expect(ipkPkg.label, '[IPK] luci-theme-moci — Console Theme');
+    });
+
+    test('routerPackagesFrom produces both APK and IPK with remarks when available', () {
+      final catalog = {
+        'packages': [
+          {
+            'name': 'luci-app-vantage',
+            'note': '[APK / IPK] RTWRT Live Dashboard',
+            'apk_url':
+                'https://github.com/richee-bot/rtwrt-aw1000-firmware/releases/download/apk-luci-app-vantage/luci-app-vantage-1.0.9-r1.apk',
+            'ipk_url':
+                'https://github.com/richee-bot/rtwrt-aw1000-firmware/releases/download/RTWRT%E2%9D%8CVANTAGE/luci-app-vantage_1.0.3-r1_all.ipk',
+          },
+        ],
+      };
+      final pkgs = routerPackagesFrom(catalog);
+      expect(pkgs, hasLength(2));
+      expect(pkgs[0].isApk, isTrue);
+      expect(pkgs[0].formatRemark, 'APK');
+      expect(pkgs[0].label, contains('[APK]'));
+
+      expect(pkgs[1].isApk, isFalse);
+      expect(pkgs[1].formatRemark, 'IPK');
+      expect(pkgs[1].label, contains('[IPK]'));
     });
   });
 
