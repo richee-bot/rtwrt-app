@@ -21,6 +21,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(telephonyProvider.notifier).refresh();
+      }
+    });
   }
 
   @override

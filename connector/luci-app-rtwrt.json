@@ -1,14 +1,21 @@
 {
 	"luci-app-rtwrt": {
-		"description": "RTWRT phone app: shell, modem, backup, and firmware",
+		"description": "RTWRT phone app: shell, modem, telephony, SMS, backup, and firmware",
 		"read": {
 			"ubus": {
 				"file": [ "exec", "read", "stat", "list" ],
-				"rc": [ "list", "init" ]
+				"rc": [ "list", "init" ],
+				"rtwrt_telephony": [ "status", "identity" ],
+				"fxs": [ "status", "calls", "history" ],
+				"at-daemon": [ "list", "sendat" ]
 			},
 			"file": {
 				"/bin/sh": [ "exec" ],
 				"/bin/sh *": [ "exec" ],
+				"/usr/bin/rtwrt-sms": [ "exec" ],
+				"/usr/bin/rtwrt-sms *": [ "exec" ],
+				"/usr/bin/sms_tool_q": [ "exec" ],
+				"/usr/bin/sms_tool_q *": [ "exec" ],
 				"/usr/bin/tom_modem": [ "exec" ],
 				"/usr/bin/tom_modem *": [ "exec" ],
 				"/usr/bin/sms_tool": [ "exec" ],
@@ -41,11 +48,18 @@
 			"ubus": {
 				"file": [ "exec", "write", "read" ],
 				"rc": [ "init" ],
-				"uci": [ "get", "set", "commit", "configs" ]
+				"uci": [ "get", "set", "commit", "configs" ],
+				"rtwrt_telephony": [ "dial", "answer", "hangup" ],
+				"fxs": [ "clear_guard", "set_enabled", "ring_test", "clear_history", "delete_calls" ],
+				"at-daemon": [ "sendat" ]
 			},
 			"file": {
 				"/bin/sh": [ "exec" ],
 				"/bin/sh *": [ "exec" ],
+				"/usr/bin/rtwrt-sms": [ "exec" ],
+				"/usr/bin/rtwrt-sms *": [ "exec" ],
+				"/usr/bin/sms_tool_q": [ "exec" ],
+				"/usr/bin/sms_tool_q *": [ "exec" ],
 				"/usr/bin/tom_modem": [ "exec" ],
 				"/usr/bin/tom_modem *": [ "exec" ],
 				"/usr/bin/sms_tool": [ "exec" ],

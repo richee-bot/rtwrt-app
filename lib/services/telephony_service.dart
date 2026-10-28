@@ -92,6 +92,16 @@ class TelephonyService {
 
   const TelephonyService(this.api, this.session);
 
+  static Map<String, dynamic> _extractData(dynamic res) {
+    if (res is List && res.length > 1 && res[1] is Map) {
+      return Map<String, dynamic>.from(res[1] as Map);
+    }
+    if (res is Map) {
+      return Map<String, dynamic>.from(res);
+    }
+    return const {};
+  }
+
   Future<TelephonyStatus> getStatus() async {
     try {
       final res = await api.call(
@@ -102,11 +112,9 @@ class TelephonyService {
         method: 'status',
         params: {},
       );
-      if (res is Map<String, dynamic>) {
-        return TelephonyStatus.fromJson(res);
-      }
-      if (res is Map) {
-        return TelephonyStatus.fromJson(Map<String, dynamic>.from(res));
+      final data = _extractData(res);
+      if (data.isNotEmpty) {
+        return TelephonyStatus.fromJson(data);
       }
     } catch (e) {
       Logger.debug('telephony.status call: $e');
@@ -124,11 +132,9 @@ class TelephonyService {
         method: 'identity',
         params: {},
       );
-      if (res is Map<String, dynamic>) {
-        return TelephonyIdentity.fromJson(res);
-      }
-      if (res is Map) {
-        return TelephonyIdentity.fromJson(Map<String, dynamic>.from(res));
+      final data = _extractData(res);
+      if (data.isNotEmpty) {
+        return TelephonyIdentity.fromJson(data);
       }
     } catch (e) {
       Logger.debug('telephony.identity call: $e');
@@ -146,7 +152,8 @@ class TelephonyService {
         method: 'dial',
         params: {'number': number.trim()},
       );
-      if (res is Map && res['ok'] == true) return true;
+      final data = _extractData(res);
+      if (data['ok'] == true) return true;
     } catch (e, stack) {
       Logger.exception('Telephony dial failed', e, stack);
     }
@@ -163,7 +170,8 @@ class TelephonyService {
         method: 'answer',
         params: {},
       );
-      if (res is Map && res['ok'] == true) return true;
+      final data = _extractData(res);
+      if (data['ok'] == true) return true;
     } catch (e, stack) {
       Logger.exception('Telephony answer failed', e, stack);
     }
@@ -180,7 +188,8 @@ class TelephonyService {
         method: 'hangup',
         params: {},
       );
-      if (res is Map && res['ok'] == true) return true;
+      final data = _extractData(res);
+      if (data['ok'] == true) return true;
     } catch (e, stack) {
       Logger.exception('Telephony hangup failed', e, stack);
     }
@@ -197,9 +206,10 @@ class TelephonyService {
         method: 'calls',
         params: {},
       );
-      if (res is Map && res['calls'] is List) {
+      final data = _extractData(res);
+      if (data['calls'] is List) {
         final list = <TelephonyCallRecord>[];
-        for (final item in (res['calls'] as List)) {
+        for (final item in (data['calls'] as List)) {
           if (item is Map) {
             list.add(
               TelephonyCallRecord(
@@ -305,9 +315,10 @@ class TelephonyService {
         'params': ['-c', script],
       },
     );
-    if (result is Map && result['stdout'] != null) {
-      return result['stdout'].toString();
-    }
-    return result.toString();
+    final data = _extractData(result);
+    final stdout = (data['stdout'] ?? '').toString();
+    final stderr = (data['stderr'] ?? '').toString();
+    if (stdout.trim().isNotEmpty) return stdout;
+    return stderr;
   }
 }

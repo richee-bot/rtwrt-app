@@ -61,17 +61,27 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
 
   @override
   TelephonyState build() {
+    // Watch telephonyServiceProvider so when router session connects or switches,
+    // this notifier re-initializes and begins polling live state immediately!
+    final service = ref.watch(telephonyServiceProvider);
+
     ref.onDispose(() {
       _timer?.cancel();
     });
-    _startPolling();
+
+    if (service != null) {
+      _startPolling();
+    } else {
+      _timer?.cancel();
+    }
+
     return const TelephonyState();
   }
 
   void _startPolling() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => _poll());
-    // Initial fetch
+    // Immediately fetch initial state
     Future.microtask(() => refresh());
   }
 
