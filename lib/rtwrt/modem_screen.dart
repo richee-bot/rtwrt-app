@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
@@ -205,7 +205,7 @@ tom_modem -d "$PORT" -o at -c 'AT+QTEMP'
     setState(() => _loadingSms = true);
     try {
       final port = _smsPort.text.trim().isNotEmpty ? _smsPort.text.trim() : '/dev/ttyUSB3';
-      final text = await api.shell('sms_tool -d "$port" -j recv 2>&1');
+      final text = await api.shell('if command -v rtwrt-sms >/dev/null 2>&1; then rtwrt-sms recv; elif command -v sms_tool_q >/dev/null 2>&1; then sms_tool_q -d "$port" -j recv; else sms_tool -d "$port" -j recv; fi 2>&1');
       final jsonStart = text.indexOf('{');
       final jsonEnd = text.lastIndexOf('}');
       if (jsonStart != -1 && jsonEnd > jsonStart) {
@@ -583,16 +583,39 @@ tom_modem -d "$PORT" -o at -c 'AT+QTEMP'
                   label: const Text('Send SMS'),
                   onPressed: _busy
                       ? null
-                      : () => _run('Send SMS', (api) {
+                      : () => _run('Send SMS', (api) async {
                           final to = _smsTo.text.trim();
                           final body = _smsBody.text;
                           if (to.isEmpty || body.isEmpty) {
-                            return Future.value('Enter a recipient and message body.');
+                            throw Exception('Enter a recipient and message body.');
                           }
-                          final port = _smsPort.text.trim().isNotEmpty ? _smsPort.text.trim() : '/dev/ttyUSB3';
-                          return api.shell(
-                            'sms_tool -d "$port" send ${_sh(to)} ${_sh(body)}',
+                          final raw = await api.shell(
+                            'rtwrt-sms send ${_sh(to)} ${_sh(body)}',
                           );
+                          final start = raw.indexOf('{');
+                          final end = raw.lastIndexOf('}');
+                          if (start != -1 && end > start) {
+                            try {
+                              final decoded = jsonDecode(raw.substring(start, end + 1));
+                              if (decoded is Map) {
+                                if (decoded['status'] == 'success') {
+                                  _smsBody.clear();
+                                  await _fetchSms();
+                                  return decoded['message']?.toString() ?? 'SMS sent successfully';
+                                } else {
+                                  throw Exception(decoded['detail'] ?? 'Failed to send SMS');
+                                }
+                              }
+                            } catch (e) {
+                              if (e is Exception) rethrow;
+                            }
+                          }
+                          if (raw.toLowerCase().contains('error') || raw.toLowerCase().contains('failed')) {
+                            throw Exception(raw.trim());
+                          }
+                          _smsBody.clear();
+                          await _fetchSms();
+                          return raw.trim();
                         }),
                 ),
               ],
@@ -650,7 +673,7 @@ tom_modem -d "$PORT" -o at -c 'AT+QTEMP'
                   } else if (val == 'delete') {
                     _run('Delete SMS', (api) {
                       final port = _smsPort.text.trim().isNotEmpty ? _smsPort.text.trim() : '/dev/ttyUSB3';
-                      return api.shell('sms_tool -d "$port" delete ${msg.index}');
+                      return api.shell('if command -v rtwrt-sms >/dev/null 2>&1; then rtwrt-sms delete ${msg.index}; else sms_tool_q -d "$port" delete ${msg.index}; fi');
                     }).then((_) => _fetchSms());
                   }
                 },
@@ -774,7 +797,7 @@ tom_modem -d "$PORT" -o at -c 'AT+QTEMP'
         Text(label, style: Theme.of(context).textTheme.labelSmall),
         const SizedBox(height: 2),
         Text(
-          value == null || value.isEmpty ? '—' : value,
+          value == null || value.isEmpty ? 'â€”' : value,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
       ],
@@ -794,3 +817,4 @@ tom_modem -d "$PORT" -o at -c 'AT+QTEMP'
 
 String _q(String value) => value.replaceAll("'", "'\\''");
 String _sh(String value) => "'${value.replaceAll("'", "'\\''")}'";
+

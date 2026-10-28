@@ -17,11 +17,16 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
 
   static const channelId = 'router_events';
+  static const channelIdCall = 'rtwrt_telephony_calls';
+  static const channelIdSms = 'rtwrt_telephony_sms';
 
   /// Only a fallback. Android shows this in system settings as the label of
   /// the category the user can switch off, so the caller passes the
   /// localized name; this is what is left if none was given.
   static const channelName = 'Router events';
+  static const channelNameCall = 'Phone Calls';
+  static const channelNameSms = 'SMS Messages';
+  static const int callNotificationId = 999901;
 
   bool _ready = false;
 
@@ -98,6 +103,82 @@ class NotificationService {
       } catch (e, stack) {
         Logger.exception('Showing a notification failed', e, stack);
       }
+    }
+  }
+
+  /// High-priority ringing alert for an incoming telephone call
+  Future<void> showIncomingCall({required String callerNumber}) async {
+    await init();
+    try {
+      await _plugin.show(
+        id: callNotificationId,
+        title: 'Incoming Call',
+        body: callerNumber.isNotEmpty ? callerNumber : 'Unknown Caller',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelIdCall,
+            channelNameCall,
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.call,
+            fullScreenIntent: true,
+            ongoing: true,
+            autoCancel: false,
+            playSound: true,
+            enableVibration: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+            presentBadge: true,
+            interruptionLevel: InterruptionLevel.timeSensitive,
+          ),
+        ),
+      );
+    } catch (e, stack) {
+      Logger.exception('Showing incoming call notification failed', e, stack);
+    }
+  }
+
+  /// Clears active incoming call notification once answered or declined
+  Future<void> cancelIncomingCall() async {
+    try {
+      await _plugin.cancel(id: callNotificationId);
+    } catch (_) {}
+  }
+
+  /// High-priority notification when a new SMS message arrives
+  Future<void> showNewSms({
+    required String sender,
+    required String message,
+    int? messageId,
+  }) async {
+    await init();
+    try {
+      final id = messageId ?? (DateTime.now().millisecondsSinceEpoch & 0x7fffffff);
+      await _plugin.show(
+        id: id,
+        title: 'SMS from $sender',
+        body: message,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelIdSms,
+            channelNameSms,
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.message,
+            playSound: true,
+            enableVibration: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+            presentBadge: true,
+          ),
+        ),
+      );
+    } catch (e, stack) {
+      Logger.exception('Showing SMS notification failed', e, stack);
     }
   }
 

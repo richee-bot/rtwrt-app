@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luci_mobile/screens/clients_screen.dart';
 import 'package:luci_mobile/screens/diagnostics_screen.dart';
@@ -33,6 +33,7 @@ import 'package:luci_mobile/rtwrt/bandix_screen.dart';
 import 'package:luci_mobile/rtwrt/cpu_mode_screen.dart';
 import 'package:luci_mobile/rtwrt/file_manager_screen.dart';
 import 'package:luci_mobile/rtwrt/ftp_screen.dart';
+import 'package:luci_mobile/rtwrt/phone_screen.dart';
 import 'package:luci_mobile/rtwrt/netstat_screen.dart';
 import 'package:luci_mobile/rtwrt/ping_test_screen.dart';
 import 'package:luci_mobile/rtwrt/repo_keys_screen.dart';
@@ -295,10 +296,10 @@ const _destinations = <_Dest>[
   ),
   _Dest(
     'phone',
-    'Phone port',
-    'RJ11 volume, gain, and ring',
+    'VoLTE & Phone',
+    'Dialer, VoLTE calls, and line status',
     Icons.phone,
-    UciBrowserScreen(initialConfig: 'fxs'),
+    PhoneScreen(),
     group: 'Lights',
   ),
   _Dest(
@@ -328,7 +329,7 @@ const _destinations = <_Dest>[
   _Dest(
     'errors',
     'Error log',
-    'What failed, with the router’s own words',
+    'What failed, with the routerâ€™s own words',
     Icons.report,
     ErrorLogScreen(),
     group: 'Care',
@@ -564,3 +565,6 @@ class _RtwrtHubScreenState extends ConsumerState<RtwrtHubScreen> {
     );
   }
 }
+
+
+
