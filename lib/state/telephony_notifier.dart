@@ -278,7 +278,17 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
     }
   }
 
-  Future<bool> deleteSms(int index) async {
+  Future<bool> setMode(String mode) async {
+    final s = _service;
+    if (s == null) return false;
+    state = state.copyWith(busy: true, lastError: null);
+    final ok = await s.setMode(mode);
+    state = state.copyWith(busy: false);
+    await refresh();
+    return ok;
+  }
+
+  Future<bool> deleteSms(dynamic index) async {
     final s = _service;
     if (s == null) return false;
     final ok = await s.deleteSms(index);

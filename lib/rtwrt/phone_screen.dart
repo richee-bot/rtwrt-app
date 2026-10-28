@@ -161,7 +161,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
     final resolvedSender = ref.read(contactsProvider.notifier).resolveName(sender);
     final content = msg['content']?.toString() ?? '';
     final time = msg['timestamp']?.toString() ?? '';
-    final index = msg['index'] is int ? msg['index'] as int : -1;
+    final msgIndex = msg['index'];
+    final isSent = msg['type'] == 'sent';
 
     showModalBottomSheet(
       context: context,
@@ -183,17 +184,43 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          resolvedSender,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isSent ? Colors.purple.withValues(alpha: 0.3) : Colors.cyan.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                isSent ? 'OUTGOING' : 'INBOX',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSent ? Colors.purpleAccent : Colors.cyanAccent,
+                                ),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                isSent ? 'To: $resolvedSender' : resolvedSender,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                         if (resolvedSender != sender)
-                          Text(
-                            sender,
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              sender,
+                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
                           ),
                       ],
                     ),
@@ -206,7 +233,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
               ),
               const SizedBox(height: 6),
               Text(
-                'Received: $time',
+                '${isSent ? 'Sent' : 'Received'}: $time',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const Divider(height: 24),
@@ -229,7 +256,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                 children: [
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Copy Text'),
+                    label: const Text('Copy'),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: content));
                       Navigator.pop(ctx);
@@ -239,10 +266,10 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                     },
                   ),
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.reply, size: 18),
-                    label: const Text('Reply'),
+                    icon: Icon(isSent ? Icons.send : Icons.reply, size: 18),
+                    label: Text(isSent ? 'Resend' : 'Reply'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyan,
+                      backgroundColor: isSent ? Colors.purpleAccent : Colors.cyan,
                       foregroundColor: Colors.black,
                     ),
                     onPressed: () {
@@ -258,7 +285,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                       ref.read(telephonyProvider.notifier).dial(sender);
                     },
                   ),
-                  if (index != -1)
+                  if (msgIndex != null)
                     IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                       tooltip: 'Delete SMS',
@@ -267,7 +294,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                           context: context,
                           builder: (dCtx) => AlertDialog(
                             title: const Text('Delete SMS?'),
-                            content: const Text('This will delete the message from the SIM storage.'),
+                            content: Text(
+                              isSent
+                                  ? 'This will delete the sent message from history.'
+                                  : 'This will delete the message from SIM storage.',
+                            ),
                             actions: [
                               TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
                               TextButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
@@ -278,7 +309,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                           if (ctx.mounted) {
                             Navigator.pop(ctx);
                           }
-                          await ref.read(telephonyProvider.notifier).deleteSms(index);
+                          await ref.read(telephonyProvider.notifier).deleteSms(msgIndex);
                         }
                       },
                     ),
@@ -605,11 +636,140 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
     );
   }
 
+  Widget _buildModeSwitcher(BuildContext context, WidgetRef ref, TelephonyState state) {
+    final isApp = state.status.isAppMode;
+    final notifier = ref.read(telephonyProvider.notifier);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isApp
+              ? Colors.greenAccent.withValues(alpha: 0.3)
+              : Colors.amberAccent.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isApp ? Icons.phone_android_rounded : Icons.phone_in_talk_rounded,
+                size: 18,
+                color: isApp ? Colors.greenAccent : Colors.amberAccent,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'CALL ROUTING MODE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: Colors.grey,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isApp
+                      ? Colors.green.withValues(alpha: 0.2)
+                      : Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isApp ? 'App Phone Active' : 'RJ11 Landline Active',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isApp ? Colors.greenAccent : Colors.amberAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: isApp ? Colors.green.withValues(alpha: 0.2) : null,
+                    side: BorderSide(
+                      color: isApp ? Colors.greenAccent : Colors.grey.withValues(alpha: 0.3),
+                      width: isApp ? 1.5 : 1,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onPressed: isApp ? null : () => notifier.setMode('app'),
+                  icon: Icon(
+                    Icons.phone_android_rounded,
+                    size: 16,
+                    color: isApp ? Colors.greenAccent : Colors.grey,
+                  ),
+                  label: Text(
+                    'App Phone',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isApp ? FontWeight.bold : FontWeight.normal,
+                      color: isApp ? Colors.greenAccent : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: !isApp ? Colors.amber.withValues(alpha: 0.2) : null,
+                    side: BorderSide(
+                      color: !isApp ? Colors.amberAccent : Colors.grey.withValues(alpha: 0.3),
+                      width: !isApp ? 1.5 : 1,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onPressed: !isApp ? null : () => notifier.setMode('rj11'),
+                  icon: Icon(
+                    Icons.phone_in_talk_rounded,
+                    size: 16,
+                    color: !isApp ? Colors.amberAccent : Colors.grey,
+                  ),
+                  label: Text(
+                    'RJ11 Landline',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: !isApp ? FontWeight.bold : FontWeight.normal,
+                      color: !isApp ? Colors.amberAccent : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isApp
+                ? 'Make and receive calls directly on this mobile app.'
+                : 'Calls ring the physical telephone plugged into the router RJ11 jack.',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDialpadTab(TelephonyNotifier notifier, bool busy) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         children: [
+          _buildModeSwitcher(context, ref, ref.watch(telephonyProvider)),
           Row(
             children: [
               Expanded(
@@ -951,22 +1111,52 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
         final resolvedSender = ref.read(contactsProvider.notifier).resolveName(sender);
         final content = msg['content']?.toString() ?? '';
         final time = msg['timestamp']?.toString() ?? '';
-        final msgIndex = msg['index'] is int ? msg['index'] as int : -1;
+        final msgIndex = msg['index'];
+        final isSent = msg['type'] == 'sent';
 
         return ListTile(
           onTap: () => _showSmsDetailSheet(context, msg),
-          leading: const CircleAvatar(
-            backgroundColor: Colors.cyan,
-            child: Icon(Icons.sms, color: Colors.black, size: 20),
+          leading: CircleAvatar(
+            backgroundColor: isSent
+                ? Colors.deepPurpleAccent.withValues(alpha: 0.25)
+                : Colors.cyan.withValues(alpha: 0.25),
+            child: Icon(
+              isSent ? Icons.arrow_outward_rounded : Icons.arrow_downward_rounded,
+              color: isSent ? Colors.purpleAccent : Colors.cyanAccent,
+              size: 20,
+            ),
           ),
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  resolvedSender,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    if (isSent)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'SENT',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purpleAccent,
+                          ),
+                        ),
+                      ),
+                    Flexible(
+                      child: Text(
+                        isSent ? 'To: $resolvedSender' : resolvedSender,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
@@ -985,11 +1175,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                icon: const Icon(Icons.reply, size: 20),
-                tooltip: 'Reply',
+                icon: Icon(isSent ? Icons.send_rounded : Icons.reply, size: 20),
+                tooltip: isSent ? 'Resend' : 'Reply',
                 onPressed: () => _showComposeSheet(context, recipient: sender),
               ),
-              if (msgIndex != -1)
+              if (msgIndex != null)
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
                   tooltip: 'Delete',
@@ -998,7 +1188,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                       context: context,
                       builder: (dCtx) => AlertDialog(
                         title: const Text('Delete SMS?'),
-                        content: const Text('This will delete the message from the SIM storage.'),
+                        content: Text(
+                          isSent
+                              ? 'This will delete the sent message from history.'
+                              : 'This will delete the message from SIM storage.',
+                        ),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
                           TextButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),

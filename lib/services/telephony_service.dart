@@ -11,6 +11,7 @@ class TelephonyStatus {
   final int duration;
   final bool volte;
   final int signalCsq;
+  final String mode; // app or rj11
 
   const TelephonyStatus({
     this.state = 'idle',
@@ -20,12 +21,15 @@ class TelephonyStatus {
     this.duration = 0,
     this.volte = false,
     this.signalCsq = 0,
+    this.mode = 'app',
   });
 
   bool get isRinging => state == 'ringing';
   bool get isTalking => state == 'talking';
   bool get isDialing => state == 'dialing';
   bool get isIdle => state == 'idle';
+  bool get isAppMode => mode == 'app';
+  bool get isRj11Mode => mode == 'rj11';
 
   factory TelephonyStatus.fromJson(Map<String, dynamic> json) {
     return TelephonyStatus(
@@ -36,6 +40,7 @@ class TelephonyStatus {
       duration: json['duration'] is int ? json['duration'] as int : 0,
       volte: json['volte'] == true,
       signalCsq: json['signal_csq'] is int ? json['signal_csq'] as int : 0,
+      mode: json['mode']?.toString() ?? 'app',
     );
   }
 }
@@ -328,7 +333,42 @@ class TelephonyService {
     }
   }
 
-  Future<bool> deleteSms(int index) async {
+  Future<String> getMode() async {
+    try {
+      final res = await api.call(
+        session.ipAddress,
+        session.sysauth,
+        session.useHttps,
+        object: 'rtwrt_telephony',
+        method: 'get_mode',
+        params: {},
+      );
+      final data = _extractData(res);
+      return data['mode']?.toString() ?? 'app';
+    } catch (_) {
+      return 'app';
+    }
+  }
+
+  Future<bool> setMode(String mode) async {
+    try {
+      final res = await api.call(
+        session.ipAddress,
+        session.sysauth,
+        session.useHttps,
+        object: 'rtwrt_telephony',
+        method: 'set_mode',
+        params: {'mode': mode},
+      );
+      final data = _extractData(res);
+      return data['ok'] == true;
+    } catch (e, stack) {
+      Logger.exception('Telephony setMode failed', e, stack);
+      return false;
+    }
+  }
+
+  Future<bool> deleteSms(dynamic index) async {
     try {
       await _shell('/usr/bin/rtwrt-sms delete $index 2>&1');
       return true;
