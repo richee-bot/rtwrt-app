@@ -62,7 +62,7 @@ class TelephonyIdentity {
 
 class TelephonyCallRecord {
   final int time;
-  final String event; // in, out, missed, blocked, failed
+  final String event; // incoming, out, missed, answered, ended
   final String number;
 
   const TelephonyCallRecord({
@@ -226,6 +226,40 @@ class TelephonyService {
       Logger.debug('Telephony getHistory: $e');
     }
     return const [];
+  }
+
+  Future<bool> clearCallHistory() async {
+    try {
+      final res = await api.call(
+        session.ipAddress,
+        session.sysauth,
+        session.useHttps,
+        object: 'rtwrt_telephony',
+        method: 'clear_calls',
+        params: {},
+      );
+      final data = _extractData(res);
+      return data['ok'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteCallRecord(int time, String number) async {
+    try {
+      final res = await api.call(
+        session.ipAddress,
+        session.sysauth,
+        session.useHttps,
+        object: 'rtwrt_telephony',
+        method: 'delete_call',
+        params: {'time': time, 'number': number},
+      );
+      final data = _extractData(res);
+      return data['ok'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getSmsList() async {

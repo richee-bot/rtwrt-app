@@ -49,7 +49,7 @@
 				"file": [ "exec", "write", "read" ],
 				"rc": [ "init" ],
 				"uci": [ "get", "set", "commit", "configs" ],
-				"rtwrt_telephony": [ "dial", "answer", "hangup" ],
+				"rtwrt_telephony": [ "dial", "answer", "hangup", "clear_calls", "delete_call" ],
 				"fxs": [ "clear_guard", "set_enabled", "ring_test", "clear_history", "delete_calls" ],
 				"at-daemon": [ "sendat" ]
 			},

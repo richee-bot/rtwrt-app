@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:luci_mobile/models/contact.dart';
 import 'package:luci_mobile/services/telephony_service.dart';
+import 'package:luci_mobile/state/contacts_notifier.dart';
 import 'package:luci_mobile/state/telephony_notifier.dart';
 
 class PhoneScreen extends ConsumerStatefulWidget {
@@ -20,7 +22,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     Future.microtask(() {
       if (mounted) {
         ref.read(telephonyProvider.notifier).refresh();
@@ -154,10 +156,202 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
     );
   }
 
+  void _showSmsDetailSheet(BuildContext context, Map<String, dynamic> msg) {
+    final sender = msg['sender']?.toString() ?? 'Unknown';
+    final resolvedSender = ref.read(contactsProvider.notifier).resolveName(sender);
+    final content = msg['content']?.toString() ?? '';
+    final time = msg['timestamp']?.toString() ?? '';
+    final index = msg['index'] is int ? msg['index'] as int : -1;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          resolvedSender,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (resolvedSender != sender)
+                          Text(
+                            sender,
+                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Received: $time',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const Divider(height: 24),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: SelectableText(
+                  content,
+                  style: const TextStyle(fontSize: 16, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Copy Text'),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: content));
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Message copied to clipboard!')),
+                      );
+                    },
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.reply, size: 18),
+                    label: const Text('Reply'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyan,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showComposeSheet(context, recipient: sender);
+                    },
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.call, size: 18, color: Colors.green),
+                    label: const Text('Call'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ref.read(telephonyProvider.notifier).dial(sender);
+                    },
+                  ),
+                  if (index != -1)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      tooltip: 'Delete SMS',
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (dCtx) => AlertDialog(
+                            title: const Text('Delete SMS?'),
+                            content: const Text('This will delete the message from the SIM storage.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
+                              TextButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (ok == true) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                          await ref.read(telephonyProvider.notifier).deleteSms(index);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddContactDialog(BuildContext context, {Contact? contact}) {
+    final nameCtrl = TextEditingController(text: contact?.name ?? '');
+    final numCtrl = TextEditingController(text: contact?.number ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(contact == null ? 'Add Contact' : 'Edit Contact'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  prefixIcon: Icon(Icons.person),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: numCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                final number = numCtrl.text.trim();
+                if (name.isNotEmpty && number.isNotEmpty) {
+                  if (contact == null) {
+                    ref.read(contactsProvider.notifier).addContact(name, number);
+                  } else {
+                    ref.read(contactsProvider.notifier).editContact(contact.id, name, number);
+                  }
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(telephonyProvider);
     final notifier = ref.read(telephonyProvider.notifier);
+    final contacts = ref.watch(contactsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -199,6 +393,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
           tabs: const [
             Tab(icon: Icon(Icons.dialpad), text: 'Keypad'),
             Tab(icon: Icon(Icons.history), text: 'Calls'),
+            Tab(icon: Icon(Icons.contacts), text: 'Contacts'),
             Tab(icon: Icon(Icons.sms), text: 'SMS'),
           ],
         ),
@@ -233,6 +428,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                       children: [
                         _buildDialpadTab(notifier, state.busy),
                         _buildHistoryTab(state.history, notifier),
+                        _buildContactsTab(contacts, notifier),
                         _buildSmsTab(state.smsList, notifier),
                       ],
                     ),
@@ -241,14 +437,21 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
         ),
       ),
       floatingActionButton: _tabController.index == 2
-          ? FloatingActionButton.extended(
-              onPressed: () => _showComposeSheet(context),
-              icon: const Icon(Icons.edit),
-              label: const Text('Compose'),
-              backgroundColor: Colors.cyan,
-              foregroundColor: Colors.black,
+          ? FloatingActionButton(
+              onPressed: () => _showAddContactDialog(context),
+              tooltip: 'Add Contact',
+              backgroundColor: Colors.greenAccent[700],
+              child: const Icon(Icons.person_add, color: Colors.black),
             )
-          : null,
+          : _tabController.index == 3
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showComposeSheet(context),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Compose'),
+                  backgroundColor: Colors.cyan,
+                  foregroundColor: Colors.black,
+                )
+              : null,
     );
   }
 
@@ -256,6 +459,9 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
     TelephonyStatus status,
     TelephonyNotifier notifier,
   ) {
+    final rawCaller = status.peer.isNotEmpty ? status.peer : 'Incoming Call';
+    final resolvedCaller = ref.read(contactsProvider.notifier).resolveName(rawCaller);
+
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -291,12 +497,17 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
                   ),
                 ),
                 Text(
-                  status.peer.isNotEmpty ? status.peer : 'Unknown Caller',
+                  resolvedCaller,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (resolvedCaller != rawCaller)
+                  Text(
+                    rawCaller,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
               ],
             ),
           ),
@@ -320,6 +531,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
   ) {
     final minutes = (status.duration ~/ 60).toString().padLeft(2, '0');
     final seconds = (status.duration % 60).toString().padLeft(2, '0');
+    final rawPeer = status.peer.isNotEmpty ? status.peer : 'Active Call';
+    final resolvedPeer = ref.read(contactsProvider.notifier).resolveName(rawPeer);
 
     return Container(
       width: double.infinity,
@@ -334,9 +547,13 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
           ),
           const SizedBox(height: 24),
           Text(
-            status.peer.isNotEmpty ? status.peer : 'Active Call',
+            resolvedPeer,
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
+          if (resolvedPeer != rawPeer) ...[
+            const SizedBox(height: 4),
+            Text(rawPeer, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
           const SizedBox(height: 8),
           Text(
             status.isDialing ? 'Dialing...' : '$minutes:$seconds',
@@ -520,45 +737,180 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
 
     final dateFormat = DateFormat('MMM d, h:mm a');
 
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Calls (${history.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.delete_sweep, size: 18, color: Colors.redAccent),
+                label: const Text('Clear All', style: TextStyle(color: Colors.redAccent)),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (dCtx) => AlertDialog(
+                      title: const Text('Clear All Call Logs?'),
+                      content: const Text('This will delete all recent call history on the router.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Clear', style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+                  if (ok == true) {
+                    await notifier.clearCallHistory();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: history.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final item = history[index];
+              final isMissed = item.event == 'missed';
+              final isOut = item.event == 'out';
+              final rawNumber = item.number.isNotEmpty ? item.number : 'Private / Unknown';
+              final resolvedName = ref.read(contactsProvider.notifier).resolveName(rawNumber);
+
+              IconData icon = Icons.call_received;
+              Color color = Colors.green;
+              if (isMissed) {
+                icon = Icons.call_missed;
+                color = Colors.red;
+              } else if (isOut) {
+                icon = Icons.call_made;
+                color = Colors.blue;
+              }
+
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                title: Text(
+                  resolvedName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isMissed ? Colors.redAccent : Colors.white,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (resolvedName != rawNumber)
+                      Text(rawNumber, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(dateFormat.format(item.date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.call, color: Colors.green),
+                      tooltip: 'Call',
+                      onPressed: () {
+                        if (item.number.isNotEmpty) {
+                          notifier.dial(item.number);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                      tooltip: 'Delete',
+                      onPressed: () => notifier.deleteCallRecord(item.time, item.number),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactsTab(List<Contact> contacts, TelephonyNotifier notifier) {
+    if (contacts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.contacts_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text('No contacts saved yet.'),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.person_add),
+              label: const Text('Add Contact'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent[700],
+                foregroundColor: Colors.black,
+              ),
+              onPressed: () => _showAddContactDialog(context),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.all(12),
-      itemCount: history.length,
+      itemCount: contacts.length,
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final item = history[index];
-        final isMissed = item.event == 'missed';
-        final isOut = item.event == 'out';
-
-        IconData icon = Icons.call_received;
-        Color color = Colors.green;
-        if (isMissed) {
-          icon = Icons.call_missed;
-          color = Colors.red;
-        } else if (isOut) {
-          icon = Icons.call_made;
-          color = Colors.blue;
-        }
+        final c = contacts[index];
+        final initial = c.name.isNotEmpty ? c.name[0].toUpperCase() : '?';
 
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.15),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          title: Text(
-            item.number.isNotEmpty ? item.number : 'Private / Unknown',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isMissed ? Colors.redAccent : Colors.white,
+            backgroundColor: Colors.greenAccent.withValues(alpha: 0.2),
+            child: Text(
+              initial,
+              style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold),
             ),
           ),
-          subtitle: Text(dateFormat.format(item.date)),
-          trailing: IconButton(
-            icon: const Icon(Icons.call, color: Colors.green),
-            onPressed: () {
-              if (item.number.isNotEmpty) {
-                notifier.dial(item.number);
-              }
-            },
+          title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text(c.number, style: const TextStyle(color: Colors.grey)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.call, color: Colors.green),
+                tooltip: 'Call',
+                onPressed: () => notifier.dial(c.number),
+              ),
+              IconButton(
+                icon: const Icon(Icons.sms, color: Colors.cyan),
+                tooltip: 'Send SMS',
+                onPressed: () => _showComposeSheet(context, recipient: c.number),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, size: 20),
+                onSelected: (val) {
+                  if (val == 'edit') {
+                    _showAddContactDialog(context, contact: c);
+                  } else if (val == 'delete') {
+                    ref.read(contactsProvider.notifier).deleteContact(c.id);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+                ],
+              ),
+            ],
           ),
         );
       },
@@ -596,27 +948,69 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen>
         final reversed = smsList.reversed.toList();
         final msg = reversed[index];
         final sender = msg['sender']?.toString() ?? 'Unknown';
+        final resolvedSender = ref.read(contactsProvider.notifier).resolveName(sender);
         final content = msg['content']?.toString() ?? '';
         final time = msg['timestamp']?.toString() ?? '';
+        final msgIndex = msg['index'] is int ? msg['index'] as int : -1;
 
         return ListTile(
+          onTap: () => _showSmsDetailSheet(context, msg),
           leading: const CircleAvatar(
             backgroundColor: Colors.cyan,
             child: Icon(Icons.sms, color: Colors.black, size: 20),
           ),
-          title: Text(sender, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const SizedBox(height: 2),
-              Text(content, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
+              Expanded(
+                child: Text(
+                  resolvedSender,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.reply, size: 20),
-            onPressed: () => _showComposeSheet(context, recipient: sender),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              content,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.reply, size: 20),
+                tooltip: 'Reply',
+                onPressed: () => _showComposeSheet(context, recipient: sender),
+              ),
+              if (msgIndex != -1)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
+                  tooltip: 'Delete',
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (dCtx) => AlertDialog(
+                        title: const Text('Delete SMS?'),
+                        content: const Text('This will delete the message from the SIM storage.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    );
+                    if (ok == true) {
+                      await notifier.deleteSms(msgIndex);
+                    }
+                  },
+                ),
+            ],
           ),
         );
       },

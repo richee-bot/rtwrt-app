@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:luci_mobile/services/notification_service.dart';
 import 'package:luci_mobile/services/telephony_service.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
+import 'package:luci_mobile/state/contacts_notifier.dart';
 import 'package:luci_mobile/state/notifications_notifier.dart';
+import 'package:luci_mobile/state/telephony_notification_settings.dart';
 import 'package:luci_mobile/utils/logger.dart';
 
 @immutable
@@ -61,8 +63,6 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
 
   @override
   TelephonyState build() {
-    // Watch telephonyServiceProvider so when router session connects or switches,
-    // this notifier re-initializes and begins polling live state immediately!
     final service = ref.watch(telephonyServiceProvider);
 
     ref.onDispose(() {
@@ -81,7 +81,6 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
   void _startPolling() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => _poll());
-    // Immediately fetch initial state
     Future.microtask(() => refresh());
   }
 
@@ -124,10 +123,8 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
         }
       }
 
-      // Check transitions: incoming call ring & incoming SMS
       _checkTransitions(stat, currentSms);
 
-      // If active call or call state changed, also update history
       if (stat.isRinging || stat.isTalking || stat.state != _previousCallState) {
         final hist = await s.getHistory();
         state = state.copyWith(status: stat, history: hist, smsList: currentSms);
@@ -140,10 +137,17 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
   }
 
   void _checkTransitions(TelephonyStatus newStatus, List<Map<String, dynamic>> currentSms) {
+    final settings = ref.read(telephonyNotificationSettingsProvider);
+    final contacts = ref.read(contactsProvider.notifier);
+
     // 1. Incoming Call Notification
     if (newStatus.state == 'ringing' && _previousCallState != 'ringing') {
-      final caller = newStatus.peer.isNotEmpty ? newStatus.peer : 'Incoming Call';
-      _notifications.showIncomingCall(callerNumber: caller);
+      if (settings.calls) {
+        final rawCaller = newStatus.peer.isNotEmpty ? newStatus.peer : 'Unknown Caller';
+        final resolvedName = contacts.resolveName(rawCaller);
+        final displayName = resolvedName != rawCaller ? '$resolvedName ($rawCaller)' : rawCaller;
+        _notifications.showIncomingCall(callerNumber: displayName);
+      }
     } else if (newStatus.state != 'ringing' && _previousCallState == 'ringing') {
       _notifications.cancelIncomingCall();
     }
@@ -151,10 +155,13 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
 
     // 2. Incoming SMS Notification
     if (_previousSmsCount != -1 && currentSms.length > _previousSmsCount) {
-      final newest = currentSms.last;
-      final sender = newest['sender']?.toString() ?? 'Unknown';
-      final content = newest['content']?.toString() ?? 'New Message';
-      _notifications.showNewSms(sender: sender, message: content);
+      if (settings.sms) {
+        final newest = currentSms.last;
+        final rawSender = newest['sender']?.toString() ?? 'Unknown';
+        final resolvedSender = contacts.resolveName(rawSender);
+        final content = newest['content']?.toString() ?? 'New Message';
+        _notifications.showNewSms(sender: resolvedSender, message: content);
+      }
     }
     _previousSmsCount = currentSms.length;
   }
@@ -192,7 +199,15 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
     try {
       final ok = await s.answer();
       await _notifications.cancelIncomingCall();
-      state = state.copyWith(busy: false);
+      state = state.copyWith(
+        status: TelephonyStatus(
+          state: 'talking',
+          peer: state.status.peer,
+          ownNumber: state.ownDisplayNumber,
+          volte: state.status.volte,
+        ),
+        busy: false,
+      );
       await refresh();
       return ok;
     } catch (e) {
@@ -223,6 +238,22 @@ class TelephonyNotifier extends Notifier<TelephonyState> {
       state = state.copyWith(busy: false, lastError: e.toString());
       return false;
     }
+  }
+
+  Future<bool> clearCallHistory() async {
+    final s = _service;
+    if (s == null) return false;
+    final ok = await s.clearCallHistory();
+    if (ok) await refresh();
+    return ok;
+  }
+
+  Future<bool> deleteCallRecord(int time, String number) async {
+    final s = _service;
+    if (s == null) return false;
+    final ok = await s.deleteCallRecord(time, number);
+    if (ok) await refresh();
+    return ok;
   }
 
   Future<SmsSendResult> sendSms(String to, String message) async {

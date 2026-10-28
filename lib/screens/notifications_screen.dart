@@ -7,6 +7,7 @@ import 'package:luci_mobile/l10n/luci_localizations.dart';
 import 'package:luci_mobile/models/router_event.dart';
 import 'package:luci_mobile/services/background_monitor.dart';
 import 'package:luci_mobile/state/notifications_notifier.dart';
+import 'package:luci_mobile/state/telephony_notification_settings.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
 
 /// Whether — and what — the app may notify about while it is closed.
@@ -18,6 +19,9 @@ class NotificationsScreen extends ConsumerWidget {
     final l10n = context.l10n;
     final async = ref.watch(notificationSettingsProvider);
     final notifier = ref.read(notificationSettingsProvider.notifier);
+    final telephonySettings = ref.watch(telephonyNotificationSettingsProvider);
+    final telephonyNotifier =
+        ref.read(telephonyNotificationSettingsProvider.notifier);
 
     return Scaffold(
       appBar: LuciAppBar(title: l10n.notifications, showBack: true),
@@ -84,6 +88,18 @@ class NotificationsScreen extends ConsumerWidget {
                           ? (on) => notifier.setKind(kind, on)
                           : null,
                     ),
+                  SwitchListTile(
+                    dense: true,
+                    title: const Text('Incoming phone calls'),
+                    value: telephonySettings.calls,
+                    onChanged: (on) => telephonyNotifier.setCalls(on),
+                  ),
+                  SwitchListTile(
+                    dense: true,
+                    title: const Text('New SMS messages'),
+                    value: telephonySettings.sms,
+                    onChanged: (on) => telephonyNotifier.setSms(on),
+                  ),
                 ],
               ),
             ),
