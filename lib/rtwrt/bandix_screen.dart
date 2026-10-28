@@ -154,12 +154,12 @@ vnstat -i wwan0 -tr 1 2>/dev/null || vnstat -i wwan0 2>/dev/null || echo "vnstat
           ok: true,
           detail: 'Bandix eBPF monitoring service restarted.',
         );
-        _fetchBandix();
+        await _fetchBandix();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'Restart Bandix', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'Restart Bandix', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }
@@ -189,12 +189,12 @@ vnstat -i wwan0 -tr 1 2>/dev/null || vnstat -i wwan0 2>/dev/null || echo "vnstat
       await api.shell('ubus call luci.bandix clearData 2>/dev/null || rm -rf /usr/share/bandix/metrics/*');
       if (mounted) {
         setState(() => _busy = false);
-        _fetchBandix();
+        await _fetchBandix();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'Clear Data', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'Clear Data', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }

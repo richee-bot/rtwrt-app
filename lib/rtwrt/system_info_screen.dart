@@ -90,7 +90,7 @@ echo "MEM=$(free -h 2>/dev/null || free -m 2>/dev/null)"
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'System Info', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'System Info', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }

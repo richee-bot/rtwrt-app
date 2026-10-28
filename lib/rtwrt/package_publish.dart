@@ -51,8 +51,8 @@ bool isApkPackage(String pathOrName) {
 
 /// Install command for a file already stored on the router.
 /// Strictly selects commands:
-/// - .apk force: apk add --force-broken-world --allow-untrusted <path>
-/// - .ipk force: opkg install --force-depends --force-overwrite <path>
+/// - .apk force: apk add --force-broken-world --allow-untrusted `<path>`
+/// - .ipk force: opkg install --force-depends --force-overwrite `<path>`
 String packageInstallLine(
   String path, {
   required bool apk,

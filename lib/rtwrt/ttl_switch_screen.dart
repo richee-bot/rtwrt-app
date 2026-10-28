@@ -135,7 +135,7 @@ echo "TTL updated to $ttlVal"
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'TTL Switch', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'TTL Switch', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }
@@ -157,7 +157,7 @@ ${en ? '/etc/init.d/qmodem_ttl restart' : '/etc/init.d/qmodem_ttl stop'}
           _enabled = en;
           _busy = false;
         });
-        showRtwrtResult(
+        await showRtwrtResult(
           context,
           action: 'TTL Service',
           ok: true,
@@ -167,7 +167,7 @@ ${en ? '/etc/init.d/qmodem_ttl restart' : '/etc/init.d/qmodem_ttl stop'}
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'TTL Service', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'TTL Service', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }

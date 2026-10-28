@@ -103,12 +103,12 @@ echo "Switched to $targetGov"
           ok: true,
           detail: 'CPU scaled to $label ($targetGov).\n${res.trim()}',
         );
-        _fetchCpuState();
+        await _fetchCpuState();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'CPU Mode', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'CPU Mode', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }

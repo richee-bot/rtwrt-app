@@ -88,12 +88,12 @@ echo "ENABLED=$ENABLED"
           ok: true,
           detail: res.trim().isEmpty ? '$action completed.' : res.trim(),
         );
-        _checkFtpStatus();
+        await _checkFtpStatus();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'FTP $action', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'FTP $action', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }
@@ -120,12 +120,12 @@ fi
           ok: res.contains('OK') || res.contains('Installing') || !res.contains('ERROR'),
           detail: res.trim(),
         );
-        _checkFtpStatus();
+        await _checkFtpStatus();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'Install FTP', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'Install FTP', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }

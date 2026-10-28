@@ -105,7 +105,7 @@ class _StorageManagerScreenState extends ConsumerState<StorageManagerScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'Storage', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'Storage', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }
@@ -123,12 +123,12 @@ class _StorageManagerScreenState extends ConsumerState<StorageManagerScreen> {
           ok: res.trim().isEmpty,
           detail: res.trim().isEmpty ? 'Successfully unmounted $mountPoint' : res,
         );
-        _fetchStorage();
+        await _fetchStorage();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        showRtwrtResult(context, action: 'Unmount', ok: false, detail: RtwrtApi.explain(e));
+        await showRtwrtResult(context, action: 'Unmount', ok: false, detail: RtwrtApi.explain(e));
       }
     }
   }
